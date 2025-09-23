@@ -65,7 +65,7 @@ Este projeto contém scripts e documentação para migrar uma geodatabase ArcGIS
 Em caso de falha, consulte `docs/rollback_procedure.md` para instruções detalhadas sobre como reverter a migração.
 
 ## Autores
-- [Seu Nome/Equipe]
+- Pedro Silva
 
 ## Licença
-[Informações de licença, se aplicável]
+MIT
