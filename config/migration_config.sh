@@ -33,7 +33,7 @@ BACKUP_JOBS="10"  # Número de jobs paralelos para pg_dump/pg_restore
 LOCAL_BACKUP_DIR=""  # Exemplo: "/tmp/backup_local" para backup temporário no servidor de origem
 
 # Configuração do ST_Geometry
-ST_GEOMETRY_PATH="/caminho/para/st_geometry.so"  # Atualize com o caminho real após o download
+ST_GEOMETRY_PATH="/usr/lib/postgresql/15/lib/st_geometry.so"
 
 # Configuração de Locale
 LOCALE="pt_BR.UTF-8"
