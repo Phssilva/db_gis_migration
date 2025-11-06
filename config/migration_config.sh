@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# Configuração do Ambiente de Origem
-SOURCE_HOST="10.0.0.95"
-SOURCE_PORT="5432"
-SOURCE_DB="gisdb"
-SOURCE_USER="gisadmin"
-SOURCE_PASSWORD="sua_senha_segura"  # Considere usar variáveis de ambiente em vez de senhas hardcoded
+# Configuração do Servidor de Origem (PostgreSQL 13)
+# ATENÇÃO: Configure estas informações antes de executar o dump
+SOURCE_HOST="10.0.0.94"              # IP do servidor de origem
+SOURCE_PORT="5432"                   # Porta do PostgreSQL (padrão: 5432)
+SOURCE_DB="gisdb"                    # Nome da base de dados a migrar
+SOURCE_USER="gisadmin"               # Usuário com permissão de leitura
+SOURCE_PASSWORD="gisadmin"                   # IMPORTANTE: Atualize com a senha real
 SOURCE_POSTGRES_VERSION="13"
 SOURCE_POSTGRES_HOME="/usr/lib/postgresql/13"
 
