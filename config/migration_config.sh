@@ -5,8 +5,8 @@
 SOURCE_HOST="10.0.0.94"              # IP do servidor de origem
 SOURCE_PORT="5432"                   # Porta do PostgreSQL (padrão: 5432)
 SOURCE_DB="gisdb"                    # Nome da base de dados a migrar
-SOURCE_USER="postgres"               # Usuário com permissão de leitura
-SOURCE_PASSWORD="postgres"                   # IMPORTANTE: Atualize com a senha real
+SOURCE_USER="gisadmin"               # Usuário com permissão de leitura
+SOURCE_PASSWORD="B@ncogI$12!@"                   # IMPORTANTE: Atualize com a senha real
 SOURCE_POSTGRES_VERSION="13"
 SOURCE_POSTGRES_HOME="/usr/lib/postgresql/13"
 
