@@ -14,15 +14,15 @@ TARGET_HOST="localhost"
 TARGET_PORT="5432"
 TARGET_DB="gisdb"
 TARGET_USER="postgres"
-TARGET_PASSWORD="sua_senha_segura"  # Considere usar variáveis de ambiente em vez de senhas hardcoded
+TARGET_PASSWORD=""  # Deixe vazio se usar autenticação peer/trust local
 TARGET_POSTGRES_VERSION="15"
 TARGET_POSTGRES_HOME="/usr/lib/postgresql/15"
-TARGET_DATA_DIR="/banco/pg15"
+TARGET_DATA_DIR="/mnt/banco/pg15"
 
 # Configuração de Backup
 # IMPORTANTE: O dump será gerado diretamente no servidor de destino
-# Configure o caminho para a partição dedicada ao backup (1TB)
-BACKUP_DIR="/mnt/backup_partition"  # Atualize com o ponto de montagem da sua partição de backup
+# Partição dedicada ao backup (984GB)
+BACKUP_DIR="/mnt/backuprestore"
 GLOBALS_BACKUP="${BACKUP_DIR}/globals.sql"
 DB_BACKUP_DIR="${BACKUP_DIR}/gisdb_dump_dir"
 BACKUP_JOBS="10"  # Número de jobs paralelos para pg_dump/pg_restore
