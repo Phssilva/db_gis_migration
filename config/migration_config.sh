@@ -20,10 +20,16 @@ TARGET_POSTGRES_HOME="/usr/lib/postgresql/15"
 TARGET_DATA_DIR="/banco/pg15"
 
 # Configuração de Backup
-BACKUP_DIR="/banco/backup"
+# IMPORTANTE: O dump será gerado diretamente no servidor de destino
+# Configure o caminho para a partição dedicada ao backup (1TB)
+BACKUP_DIR="/mnt/backup_partition"  # Atualize com o ponto de montagem da sua partição de backup
 GLOBALS_BACKUP="${BACKUP_DIR}/globals.sql"
 DB_BACKUP_DIR="${BACKUP_DIR}/gisdb_dump_dir"
 BACKUP_JOBS="10"  # Número de jobs paralelos para pg_dump/pg_restore
+
+# Configuração de Backup Remoto (se necessário fazer backup local no servidor de origem)
+# Deixe vazio se quiser gerar o dump diretamente no servidor de destino
+LOCAL_BACKUP_DIR=""  # Exemplo: "/tmp/backup_local" para backup temporário no servidor de origem
 
 # Configuração do ST_Geometry
 ST_GEOMETRY_PATH="/caminho/para/st_geometry.so"  # Atualize com o caminho real após o download

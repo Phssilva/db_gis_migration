@@ -14,60 +14,75 @@ fi
 
 # Verificar se o PostgreSQL 15 está instalado
 if ! command -v /usr/lib/postgresql/15/bin/psql &> /dev/null; then
-    log_message "PostgreSQL 15 não encontrado. Instalando..."
-    
-    # Instalar pré-requisitos
-    apt install -y postgresql-common
-    
-    # Executar o script de configuração automática do repositório
-    /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
-    
-    # Atualizar a lista de pacotes
-    apt-get update
-    
-    # Instalar PostgreSQL 15 e extensões
-    apt-get install -y postgresql-15 postgresql-contrib-15 postgresql-15-postgis-3
-    
-    log_message "PostgreSQL 15 instalado com sucesso"
+    log_message "ERRO: PostgreSQL 15 não está instalado no servidor de destino"
+    log_message "Por favor, instale o PostgreSQL 15 antes de continuar"
+    exit 1
 else
-    log_message "PostgreSQL 15 já está instalado"
+    log_message "PostgreSQL 15 encontrado no servidor de destino"
+    
+    # Verificar a versão exata
+    PG_VERSION=$(sudo -u postgres /usr/lib/postgresql/15/bin/psql --version | grep -oP 'PostgreSQL \K[0-9]+\.[0-9]+')
+    log_message "Versão do PostgreSQL instalada: $PG_VERSION"
+fi
+
+# Verificar se o PostGIS está instalado
+log_message "Verificando se o PostGIS está instalado..."
+if sudo -u postgres /usr/lib/postgresql/15/bin/psql -t -c "CREATE DATABASE postgis_check_temp;" > /dev/null 2>&1; then
+    if sudo -u postgres /usr/lib/postgresql/15/bin/psql -d postgis_check_temp -t -c "CREATE EXTENSION postgis;" > /dev/null 2>&1; then
+        POSTGIS_VERSION=$(sudo -u postgres /usr/lib/postgresql/15/bin/psql -d postgis_check_temp -t -c "SELECT PostGIS_Full_Version();" | head -1)
+        log_message "PostGIS instalado: $POSTGIS_VERSION"
+        sudo -u postgres /usr/lib/postgresql/15/bin/psql -t -c "DROP DATABASE postgis_check_temp;" > /dev/null 2>&1
+    else
+        log_message "AVISO: PostGIS não está instalado no PostgreSQL 15"
+        log_message "Se a geodatabase usar PostGIS, instale-o com: apt-get install postgresql-15-postgis-3"
+        sudo -u postgres /usr/lib/postgresql/15/bin/psql -t -c "DROP DATABASE postgis_check_temp;" > /dev/null 2>&1
+    fi
+else
+    log_message "AVISO: Não foi possível criar banco de dados de teste no PostgreSQL 15"
 fi
 
 # Configurar o locale
 log_message "Configurando locale para $LOCALE..."
-localedef -i pt_BR -f UTF-8 pt_BR.UTF-8
-localectl set-locale LANG=pt_BR.UTF-8
-log_message "Locale configurado com sucesso"
-
-# Parar o serviço PostgreSQL
-log_message "Parando o serviço PostgreSQL..."
-systemctl stop postgresql
-log_message "Serviço PostgreSQL parado"
-
-# Criar diretório de dados se não existir
-if [ ! -d "$TARGET_DATA_DIR" ]; then
-    log_message "Criando diretório de dados $TARGET_DATA_DIR..."
-    mkdir -p "$TARGET_DATA_DIR"
-    log_message "Diretório de dados criado"
-fi
-
-# Verificar se o diretório de dados padrão já existe
-if [ -d "/var/lib/postgresql/15/main" ]; then
-    log_message "Movendo diretório de dados padrão para $TARGET_DATA_DIR..."
-    mv /var/lib/postgresql/15/main/* "$TARGET_DATA_DIR/"
-    log_message "Diretório de dados movido com sucesso"
+if ! locale -a | grep -q "$LOCALE"; then
+    localedef -i pt_BR -f UTF-8 pt_BR.UTF-8
+    log_message "Locale $LOCALE criado"
 else
-    log_message "AVISO: Diretório de dados padrão não encontrado. Pode ser necessário inicializar o cluster manualmente."
-    log_message "Inicializando cluster PostgreSQL 15..."
-    pg_createcluster 15 main --start -- -D "$TARGET_DATA_DIR"
-    log_message "Cluster PostgreSQL 15 inicializado"
+    log_message "Locale $LOCALE já está disponível"
 fi
 
-# Definir permissões corretas para o diretório de dados
-log_message "Definindo permissões para o diretório de dados..."
-chown -R postgres:postgres "$TARGET_DATA_DIR"
-chmod 700 "$TARGET_DATA_DIR"
-log_message "Permissões definidas com sucesso"
+# Verificar se o serviço PostgreSQL está em execução
+log_message "Verificando status do serviço PostgreSQL..."
+if systemctl is-active --quiet postgresql; then
+    log_message "Serviço PostgreSQL está em execução"
+    
+    # Perguntar se deseja parar o serviço para ajustes de configuração
+    read -p "Deseja parar o serviço PostgreSQL para ajustes de configuração? (s/n): " STOP_SERVICE
+    if [ "$STOP_SERVICE" = "s" ] || [ "$STOP_SERVICE" = "S" ]; then
+        log_message "Parando o serviço PostgreSQL..."
+        systemctl stop postgresql
+        log_message "Serviço PostgreSQL parado"
+        SERVICE_WAS_STOPPED=true
+    else
+        SERVICE_WAS_STOPPED=false
+    fi
+else
+    log_message "Serviço PostgreSQL não está em execução"
+    SERVICE_WAS_STOPPED=false
+fi
+
+# Verificar o diretório de dados atual
+log_message "Verificando diretório de dados do PostgreSQL..."
+CURRENT_DATA_DIR=$(sudo -u postgres /usr/lib/postgresql/15/bin/psql -t -c "SHOW data_directory;" 2>/dev/null | tr -d ' ')
+if [ -n "$CURRENT_DATA_DIR" ]; then
+    log_message "Diretório de dados atual: $CURRENT_DATA_DIR"
+    
+    if [ "$CURRENT_DATA_DIR" != "$TARGET_DATA_DIR" ]; then
+        log_message "AVISO: O diretório de dados atual ($CURRENT_DATA_DIR) é diferente do configurado ($TARGET_DATA_DIR)"
+        log_message "Se desejar mudar o diretório de dados, faça isso manualmente antes de continuar"
+    fi
+else
+    log_message "Não foi possível determinar o diretório de dados atual"
+fi
 
 # Atualizar o arquivo postgresql.conf
 log_message "Atualizando postgresql.conf..."
@@ -183,11 +198,16 @@ else
     log_message "e atualize o caminho em config/migration_config.sh"
 fi
 
-# Iniciar o serviço PostgreSQL
-log_message "Iniciando o serviço PostgreSQL..."
-systemctl start postgresql
+# Reiniciar o serviço PostgreSQL se foi parado
+if [ "$SERVICE_WAS_STOPPED" = true ]; then
+    log_message "Reiniciando o serviço PostgreSQL..."
+    systemctl start postgresql
+    log_message "Serviço PostgreSQL reiniciado"
+fi
+
+# Garantir que o serviço está habilitado para iniciar automaticamente
+log_message "Habilitando serviço PostgreSQL para iniciar automaticamente..."
 systemctl enable postgresql
-log_message "Serviço PostgreSQL iniciado"
 
 # Verificar se o serviço está em execução
 if systemctl is-active --quiet postgresql; then

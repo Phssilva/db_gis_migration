@@ -18,6 +18,9 @@ show_menu() {
     echo ""
     echo "Selecione uma opção:"
     echo ""
+    echo "--- FASE 0: PREPARAÇÃO ---"
+    echo "0. Configurar partição de backup"
+    echo ""
     echo "--- FASE 1: PRÉ-MIGRAÇÃO ---"
     echo "1. Verificar compatibilidade"
     echo "2. Auditar ambiente de origem"
@@ -157,6 +160,9 @@ while true; do
     read -r option
     
     case $option in
+        0)
+            run_script_with_confirmation "$BASE_DIR/scripts/migration/00_setup_backup_partition.sh" "Configuração da partição de backup" "false"
+            ;;
         1)
             run_script_with_confirmation "$BASE_DIR/scripts/pre_migration/01_verify_compatibility.sh" "Verificação de compatibilidade" "false"
             ;;

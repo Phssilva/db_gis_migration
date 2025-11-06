@@ -2,7 +2,9 @@
 
 ## Visão Geral
 
-Este guia detalha o processo de migração de uma geodatabase ArcGIS do PostgreSQL 13.18 para o PostgreSQL 15.12 em ambiente Ubuntu, atualizando de Ubuntu 20.04 para 22.04. O processo foi projetado para minimizar o tempo de inatividade e garantir a integridade dos dados durante a migração.
+Este guia detalha o processo de migração de uma geodatabase ArcGIS do PostgreSQL 13.18 para o PostgreSQL 15.12 em ambiente Ubuntu. O processo foi projetado para minimizar o tempo de inatividade e garantir a integridade dos dados durante a migração.
+
+**Importante**: Este guia assume que o PostgreSQL 15.12 **já está instalado e configurado** no servidor de destino. O foco principal é a exportação do dump da base de dados de origem, restauração no servidor de destino e configuração da biblioteca ST_Geometry.
 
 ## Pré-requisitos
 
@@ -10,7 +12,7 @@ Antes de iniciar o processo de migração, verifique se os seguintes pré-requis
 
 1. **Acesso aos servidores**:
    - Acesso de administrador ao servidor de origem (PostgreSQL 13.18)
-   - Acesso de administrador ao servidor de destino (onde será instalado o PostgreSQL 15.12)
+   - Acesso de administrador ao servidor de destino (com PostgreSQL 15.12 já instalado)
 
 2. **Biblioteca ST_Geometry**:
    - Baixe a biblioteca ST_Geometry compatível com PostgreSQL 15 do portal My Esri
@@ -104,8 +106,9 @@ O processo de migração é dividido em três fases principais:
    - Identifica tabelas, índices, extensões, configurações, etc.
 
 3. **Preparar ambiente de destino**:
-   - Instala o PostgreSQL 15.12 e o PostGIS no servidor de destino
-   - Configura o ambiente com os parâmetros otimizados
+   - Verifica se o PostgreSQL 15.12 e o PostGIS estão instalados no servidor de destino
+   - Configura o locale do sistema
+   - Ajusta os parâmetros de configuração do PostgreSQL (postgresql.conf, pg_hba.conf)
    - Instala a biblioteca ST_Geometry
 
 ### Fase 2: Migração

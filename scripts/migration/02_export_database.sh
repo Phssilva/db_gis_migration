@@ -5,17 +5,44 @@ source ../../config/migration_config.sh
 
 log_message "Iniciando exportação da base de dados..."
 
+log_message "======================================================"
+log_message "IMPORTANTE: O dump será gerado diretamente no servidor de destino"
+log_message "Diretório de backup configurado: $BACKUP_DIR"
+log_message "======================================================"
+
 # Verificar se o diretório de backup existe
 if [ ! -d "$BACKUP_DIR" ]; then
-    log_message "Criando diretório de backup $BACKUP_DIR..."
-    mkdir -p "$BACKUP_DIR"
-    log_message "Diretório de backup criado"
+    log_message "Diretório de backup $BACKUP_DIR não existe"
+    log_message "Criando diretório de backup..."
+    
+    if mkdir -p "$BACKUP_DIR" 2>/dev/null; then
+        log_message "Diretório de backup criado com sucesso"
+    else
+        log_message "ERRO: Não foi possível criar o diretório de backup"
+        log_message "Verifique se o ponto de montagem da partição está correto em config/migration_config.sh"
+        log_message "Ponto de montagem configurado: $BACKUP_DIR"
+        exit 1
+    fi
+else
+    log_message "Diretório de backup encontrado: $BACKUP_DIR"
+fi
+
+# Verificar se o diretório é gravável
+if [ ! -w "$BACKUP_DIR" ]; then
+    log_message "ERRO: Sem permissão de escrita no diretório de backup $BACKUP_DIR"
+    log_message "Execute: sudo chown -R $(whoami):$(whoami) $BACKUP_DIR"
+    exit 1
 fi
 
 # Verificar espaço em disco disponível
-log_message "Verificando espaço em disco disponível..."
+log_message "Verificando espaço em disco disponível na partição de backup..."
 DISK_SPACE=$(df -h $BACKUP_DIR | awk 'NR==2 {print $4}')
+DISK_SPACE_BYTES=$(df $BACKUP_DIR | awk 'NR==2 {print $4}')
 log_message "Espaço em disco disponível: $DISK_SPACE"
+
+# Verificar partição
+MOUNT_POINT=$(df $BACKUP_DIR | awk 'NR==2 {print $6}')
+log_message "Ponto de montagem: $MOUNT_POINT"
 
 # Obter tamanho da base de dados
 log_message "Obtendo tamanho da base de dados $SOURCE_DB..."
@@ -43,9 +70,18 @@ fi
 
 # Exportar objetos globais (roles, tablespaces)
 log_message "Exportando objetos globais (roles, tablespaces)..."
-log_message "Comando: ${TARGET_POSTGRES_HOME}/bin/pg_dumpall --globals-only --host=$SOURCE_HOST --port=$SOURCE_PORT --username=$SOURCE_USER -f $GLOBALS_BACKUP"
+log_message "Destino: $GLOBALS_BACKUP"
+log_message "Comando: pg_dumpall --globals-only --host=$SOURCE_HOST --port=$SOURCE_PORT --username=$SOURCE_USER"
 
-PGPASSWORD=$SOURCE_PASSWORD ${TARGET_POSTGRES_HOME}/bin/pg_dumpall --globals-only --host=$SOURCE_HOST --port=$SOURCE_PORT --username=$SOURCE_USER -f $GLOBALS_BACKUP
+# Usar o pg_dumpall do PostgreSQL 15 para garantir compatibilidade
+if [ -f "${TARGET_POSTGRES_HOME}/bin/pg_dumpall" ]; then
+    PG_DUMPALL_CMD="${TARGET_POSTGRES_HOME}/bin/pg_dumpall"
+else
+    PG_DUMPALL_CMD="pg_dumpall"
+    log_message "AVISO: Usando pg_dumpall do sistema. Recomenda-se usar a versão do PostgreSQL 15"
+fi
+
+PGPASSWORD=$SOURCE_PASSWORD $PG_DUMPALL_CMD --globals-only --host=$SOURCE_HOST --port=$SOURCE_PORT --username=$SOURCE_USER -f $GLOBALS_BACKUP
 
 if [ $? -ne 0 ]; then
     log_message "ERRO: Falha ao exportar objetos globais"
@@ -56,11 +92,25 @@ fi
 
 # Exportar a base de dados principal
 log_message "Exportando base de dados $SOURCE_DB..."
-log_message "Comando: ${TARGET_POSTGRES_HOME}/bin/pg_dump --verbose --host=$SOURCE_HOST --port=$SOURCE_PORT --username=$SOURCE_USER -j $BACKUP_JOBS --format=d --encoding=UTF-8 --create --file=$DB_BACKUP_DIR $SOURCE_DB"
+log_message "Destino: $DB_BACKUP_DIR"
+log_message "Jobs paralelos: $BACKUP_JOBS"
+log_message "Formato: directory (permite restauração paralela)"
+log_message ""
+log_message "NOTA: O dump está sendo gerado diretamente na partição de backup do servidor de destino"
+log_message "Isso pode levar algum tempo dependendo do tamanho da base de dados e da velocidade da rede"
+log_message ""
+
+# Usar o pg_dump do PostgreSQL 15 para garantir compatibilidade
+if [ -f "${TARGET_POSTGRES_HOME}/bin/pg_dump" ]; then
+    PG_DUMP_CMD="${TARGET_POSTGRES_HOME}/bin/pg_dump"
+else
+    PG_DUMP_CMD="pg_dump"
+    log_message "AVISO: Usando pg_dump do sistema. Recomenda-se usar a versão do PostgreSQL 15"
+fi
 
 START_TIME=$(date +%s)
 
-PGPASSWORD=$SOURCE_PASSWORD ${TARGET_POSTGRES_HOME}/bin/pg_dump --verbose \
+PGPASSWORD=$SOURCE_PASSWORD $PG_DUMP_CMD --verbose \
     --host=$SOURCE_HOST \
     --port=$SOURCE_PORT \
     --username=$SOURCE_USER \
@@ -69,7 +119,7 @@ PGPASSWORD=$SOURCE_PASSWORD ${TARGET_POSTGRES_HOME}/bin/pg_dump --verbose \
     --encoding=UTF-8 \
     --create \
     --file=$DB_BACKUP_DIR \
-    $SOURCE_DB
+    $SOURCE_DB 2>&1 | tee -a "${LOG_DIR}/pg_dump_output.log"
 
 RESULT=$?
 END_TIME=$(date +%s)
