@@ -1,7 +1,11 @@
 #!/bin/bash
 
+# Determinar o diretório base do projeto
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # Carrega a configuração
-source ../../config/migration_config.sh
+source "$BASE_DIR/config/migration_config.sh"
 
 log_message "Iniciando importação da base de dados para o PostgreSQL 15..."
 
