@@ -18,7 +18,9 @@ TARGET_USER="postgres"
 TARGET_PASSWORD="postgres"  # Senha definida para o usuário postgres
 TARGET_POSTGRES_VERSION="15"
 TARGET_POSTGRES_HOME="/usr/lib/postgresql/15"
-TARGET_DATA_DIR="/mnt/banco/pg15"
+TARGET_DATA_DIR="/mnt/banco/pg15_data"
+
+#teste
 
 # Configuração de Backup
 # IMPORTANTE: O dump será gerado diretamente no servidor de destino
